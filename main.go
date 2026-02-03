@@ -148,8 +148,26 @@ func main() {
 		},
 	}
 
+	// --- SEARCH COMMAND ---
+	var searchCmd = &cobra.Command{
+		Use:   "search [query]",
+		Short: "Search for files by name or extension",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			session, err := utils.GetSession()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			err = utils.SearchFiles(session.Username, session.Password, args[0])
+			if err != nil {
+				log.Fatal(err)
+			}
+		},
+	}
+
 	// Register commands
-	rootCmd.AddCommand(setupCmd, connectCmd, disconnectCmd, uploadCmd, deleteCmd, purgeCmd, listCmd)
+	rootCmd.AddCommand(setupCmd, connectCmd, disconnectCmd, uploadCmd, deleteCmd, purgeCmd, listCmd, searchCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
