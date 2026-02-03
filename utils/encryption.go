@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 
@@ -75,4 +76,14 @@ func Decrypt(data []byte, password string) ([]byte, error) {
 	}
 
 	return gcm.Open(nil, nonce, ciphertext, nil)
+}
+
+// GenerateRandomName creates a 16-character hex string (8 random bytes)
+func GenerateRandomName() string {
+	bytes := make([]byte, 8)
+	if _, err := rand.Read(bytes); err != nil {
+		// This should theoretically never happen with a healthy system
+		panic(err)
+	}
+	return hex.EncodeToString(bytes)
 }
