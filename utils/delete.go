@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config" // Added for RefSpec
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
@@ -14,17 +14,15 @@ import (
 	cryptossh "golang.org/x/crypto/ssh"
 )
 
-func DeleteFile(vaultPath string, password string, rawKey []byte, username string, repoURL string) error {
+func DeleteFile(vaultPath string, session *Session) error {
+	repoURL := fmt.Sprintf("git@github.com:%s/.nexus.git", session.Username)
 	storer := memory.NewStorage()
 	fs := memfs.New()
 
-	publicKeys, err := ssh.NewPublicKeys("git", rawKey, "")
-	if err != nil {
-		return err
-	}
+	publicKeys, _ := ssh.NewPublicKeys("git", session.RawKey, "")
 	publicKeys.HostKeyCallback = cryptossh.InsecureIgnoreHostKey()
 
-	fmt.Println("Cloning vault for deletion...")
+	// 1. Clone to get current state
 	r, err := git.Clone(storer, fs, &git.CloneOptions{
 		URL:           repoURL,
 		Auth:          publicKeys,
@@ -33,60 +31,45 @@ func DeleteFile(vaultPath string, password string, rawKey []byte, username strin
 		Depth:         1,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to clone: %w", err)
+		return err
 	}
 
 	w, _ := r.Worktree()
 
-	rawIndex, err := FetchRaw(username, ".config/index")
-	if err != nil {
-		return fmt.Errorf("could not fetch index: %w", err)
-	}
-
-	index, err := FromBytes(rawIndex, password)
-	if err != nil {
-		return fmt.Errorf("failed to decrypt index: %w", err)
-	}
-
-	entry, exists := index[vaultPath]
+	// 2. Check local index for the file
+	entry, exists := session.Index[vaultPath]
 	if !exists {
-		return fmt.Errorf("file '%s' not found in index", vaultPath)
+		return fmt.Errorf("file '%s' not found in vault", vaultPath)
 	}
 
-	fmt.Printf("Removing storage file: %s\n", entry.RealName)
+	// 3. Remove physical hex file from Git
 	_, err = w.Remove(entry.RealName)
 	if err != nil {
-		fmt.Printf("Note: storage file %s already missing from Git\n", entry.RealName)
+		fmt.Printf("Warning: storage file %s already missing from remote\n", entry.RealName)
 	}
 
-	delete(index, vaultPath)
-	newIndexBytes, err := index.ToBytes(password)
-	if err != nil {
-		return err
-	}
+	// 4. Update index and re-encrypt
+	delete(session.Index, vaultPath)
+	newIndexBytes, _ := session.Index.ToBytes(session.Password)
 
 	idxFile, _ := fs.Create(".config/index")
 	idxFile.Write(newIndexBytes)
 	idxFile.Close()
 	w.Add(".config/index")
 
-	commit, err := w.Commit("Nexus: Deleted "+vaultPath, &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Nexus CLI",
-			Email: "nexus@cli.io",
-			When:  time.Now(),
-		},
+	// 5. Commit and Push
+	commit, _ := w.Commit("Nexus: Deleted "+vaultPath, &git.CommitOptions{
+		Author: &object.Signature{Name: "Nexus", Email: "nexus@cli.io", When: time.Now()},
+	})
+
+	err = r.Push(&git.PushOptions{
+		Auth:     publicKeys,
+		RefSpecs: []config.RefSpec{config.RefSpec(fmt.Sprintf("%s:refs/heads/master", commit))},
 	})
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Pushing changes...")
-	return r.Push(&git.PushOptions{
-		Auth: publicKeys,
-		// RefSpec is part of the 'config' package
-		RefSpecs: []config.RefSpec{
-			config.RefSpec(fmt.Sprintf("%s:refs/heads/master", commit)),
-		},
-	})
+	// 6. Sync local session
+	return session.Save()
 }

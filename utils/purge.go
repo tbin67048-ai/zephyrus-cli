@@ -13,57 +13,35 @@ import (
 	cryptossh "golang.org/x/crypto/ssh"
 )
 
-// PurgeVault wipes the entire repository history and leaves it completely empty.
-func PurgeVault(rawKey []byte, repoURL string) error {
+func PurgeVault(session *Session) error {
+	repoURL := fmt.Sprintf("git@github.com:%s/.nexus.git", session.Username)
 	storer := memory.NewStorage()
 	fs := memfs.New()
 
-	// 1. Setup Auth
-	publicKeys, err := ssh.NewPublicKeys("git", rawKey, "")
-	if err != nil {
-		return err
-	}
+	publicKeys, _ := ssh.NewPublicKeys("git", session.RawKey, "")
 	publicKeys.HostKeyCallback = cryptossh.InsecureIgnoreHostKey()
 
-	// 2. Initialize a brand new repository in memory
-	r, err := git.Init(storer, fs)
-	if err != nil {
-		return err
-	}
-
+	r, _ := git.Init(storer, fs)
 	w, _ := r.Worktree()
 
-	// 3. Create a 100% empty commit
-	// AllowEmptyCommits: true is the key here to avoid needing a README file.
-	commit, err := w.Commit("Nexus: PURGE VAULT (Total Wipe)", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Nexus CLI",
-			Email: "nexus@cli.io",
-			When:  time.Now(),
-		},
+	commit, _ := w.Commit("Nexus: PURGE VAULT", &git.CommitOptions{
+		Author:            &object.Signature{Name: "Nexus", Email: "nexus@cli.io", When: time.Now()},
 		AllowEmptyCommits: true,
 	})
-	if err != nil {
-		return err
-	}
 
-	// 4. Force push to remote master
-	fmt.Println("⚠️  Wiping remote repository and all files...")
+	_, _ = r.CreateRemote(&config.RemoteConfig{Name: "origin", URLs: []string{repoURL}})
 
-	_, err = r.CreateRemote(&config.RemoteConfig{
-		Name: "origin",
-		URLs: []string{repoURL},
-	})
-	if err != nil {
-		return err
-	}
-
-	return r.Push(&git.PushOptions{
+	err := r.Push(&git.PushOptions{
 		RemoteName: "origin",
 		Auth:       publicKeys,
-		RefSpecs: []config.RefSpec{
-			config.RefSpec(fmt.Sprintf("%s:refs/heads/master", commit)),
-		},
-		Force: true,
+		RefSpecs:   []config.RefSpec{config.RefSpec(fmt.Sprintf("%s:refs/heads/master", commit))},
+		Force:      true,
 	})
+	if err != nil {
+		return err
+	}
+
+	// Reset local index to empty
+	session.Index = NewIndex()
+	return session.Save()
 }
