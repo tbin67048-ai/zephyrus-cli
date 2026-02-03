@@ -1,53 +1,40 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"log"
+	"os"
+
 	"nexus-cli/utils"
 )
 
 func main() {
-	// 1. Setup test data
-	password := "super-secret-vault-password"
-	originalData := []byte("This is a secret note for the Nexus Vault.")
+	const (
+		repoURL  = "git@github.com:Auchrio/.nexus.git"
+		keyPath  = ".config/key"
+		fileName = "test.txt"
+		fileData = "Nexus CLI Test: Pusing a file which already exists in the repo."
+	)
 
-	fmt.Println("--- Nexus CLI Encryption Test ---")
-	fmt.Printf("Original Plaintext: %s\n", string(originalData))
-	fmt.Printf("Password Used:      %s\n", password)
-
-	// 2. Test Encryption
-	fmt.Println("\nEncrypting...")
-	encryptedBlob, err := utils.Encrypt(originalData, password)
+	// 1. Read the decrypted private key from the local config
+	fmt.Printf("Reading plain private key from %s...\n", keyPath)
+	rawKey, err := os.ReadFile(keyPath)
 	if err != nil {
-		log.Fatalf("Encryption failed: %v", err)
+		log.Fatalf("Failed to read key file: %v. Make sure the file exists at %s", err, keyPath)
 	}
 
-	// Show the packaged data [Salt(16) + Nonce(12) + Ciphertext]
-	fmt.Printf("Encrypted Blob (hex): %x...\n", encryptedBlob[:32])
-	fmt.Printf("Total Blob Length:    %d bytes\n", len(encryptedBlob))
+	// 2. Push the file
+	fmt.Printf("Pushing %s to repository...\n", fileName)
 
-	// 3. Test Decryption
-	fmt.Println("\nDecrypting...")
-	decryptedData, err := utils.Decrypt(encryptedBlob, password)
+	commitMsg := "Nexus Test: pushing individual file"
+
+	err = utils.PushFile(repoURL, rawKey, fileName, []byte(fileData), commitMsg)
 	if err != nil {
-		log.Fatalf("Decryption failed: %v", err)
+		log.Fatalf("Git push failed: %v", err)
 	}
 
-	fmt.Printf("Decrypted Result:   %s\n", string(decryptedData))
-
-	// 4. Verification
-	if bytes.Equal(originalData, decryptedData) {
-		fmt.Println("\n✅ SUCCESS: Decrypted data matches original.")
-	} else {
-		fmt.Println("\n❌ FAILURE: Decrypted data does not match.")
-	}
-
-	// 5. Test Failure (Wrong Password)
-	fmt.Println("\nTesting with incorrect password...")
-	_, err = utils.Decrypt(encryptedBlob, "wrong-password")
-	if err != nil {
-		fmt.Printf("Expected Error caught: %v\n", err)
-		fmt.Println("✅ SUCCESS: Decryption blocked with wrong password.")
-	}
+	fmt.Println("--------------------------------------------------")
+	fmt.Println("✔ SUCCESS: File pushed successfully!")
+	fmt.Println("Check your repo: https://github.com/Auchrio/.nexus")
+	fmt.Println("--------------------------------------------------")
 }
