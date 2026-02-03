@@ -4,79 +4,70 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 )
-
-// Session stores the decrypted credentials for the current local environment
-type Session struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	RawKey   []byte `json:"raw_key"`
-}
 
 const configPath = "nexus.conf"
 
-// Connect downloads the master key, decrypts it, and saves a local session
-func Connect(username string, password string) error {
-	fmt.Printf("Connecting to vault for %s...\n", username)
+type Session struct {
+	Username string     `json:"username"`
+	Password string     `json:"password"`
+	RawKey   []byte     `json:"raw_key"`
+	Index    VaultIndex `json:"index"`
+}
 
-	// 1. Fetch the encrypted key from GitHub using your existing helper
+// Connect initializes the session and syncs the index locally
+func Connect(username string, password string) error {
+	fmt.Printf("Connecting and syncing vault for %s...\n", username)
+
+	// 1. Fetch & Decrypt Master Key
 	encryptedKey, err := FetchRaw(username, ".config/key")
 	if err != nil {
-		return fmt.Errorf("could not find master key in vault: %w", err)
+		return fmt.Errorf("master key not found: %w", err)
 	}
-
-	// 2. Decrypt it to verify the password and get the usable SSH key
 	rawKey, err := Decrypt(encryptedKey, password)
 	if err != nil {
-		return fmt.Errorf("authentication failed: invalid password")
+		return fmt.Errorf("auth failed: invalid password")
 	}
 
-	// 3. Prepare the session object
+	// 2. Fetch & Decrypt Index (Handle empty vault)
+	var index VaultIndex
+	rawIndex, err := FetchRaw(username, ".config/index")
+	if err != nil {
+		if strings.Contains(err.Error(), "404") {
+			index = NewIndex()
+		} else {
+			return err
+		}
+	} else {
+		index, _ = FromBytes(rawIndex, password)
+	}
+
 	session := Session{
 		Username: username,
 		Password: password,
 		RawKey:   rawKey,
+		Index:    index,
 	}
 
-	data, err := json.MarshalIndent(session, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	// 4. Write to local file with restricted permissions (Read/Write for owner only)
-	err = os.WriteFile(configPath, data, 0600)
-	if err != nil {
-		return fmt.Errorf("failed to save session: %w", err)
-	}
-
-	fmt.Println("✔ Connected. Session saved to nexus.conf")
-	return nil
+	return session.Save()
 }
 
-// Disconnect wipes the local session file
-func Disconnect() error {
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		fmt.Println("No active session found.")
-		return nil
-	}
-
-	err := os.Remove(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to disconnect: %w", err)
-	}
-
-	fmt.Println("✔ Disconnected. Local session cleared.")
-	return nil
+func (s *Session) Save() error {
+	data, _ := json.MarshalIndent(s, "", "  ")
+	return os.WriteFile(configPath, data, 0600)
 }
 
-// GetSession is a helper for your other functions to load the active config
 func GetSession() (*Session, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("not connected: please run 'connect' first")
+		return nil, fmt.Errorf("not connected: run 'connect' first")
 	}
+	var s Session
+	err = json.Unmarshal(data, &s)
+	return &s, err
+}
 
-	var session Session
-	err = json.Unmarshal(data, &session)
-	return &session, err
+func Disconnect() error {
+	return os.Remove(configPath)
 }
