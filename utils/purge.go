@@ -33,8 +33,8 @@ func PurgeVault(session *Session) error {
 
 	commit, err := w.Commit("Nexus: Updated Vault", &git.CommitOptions{
 		Author: &object.Signature{
-			Name:  "Nexus CLI",
-			Email: "nexus@cli.io",
+			Name:  "NexusCLI",
+			Email: "Auchrio@proton.me",
 			When:  time.Now(),
 		},
 		AllowEmptyCommits: true,

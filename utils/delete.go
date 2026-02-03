@@ -98,8 +98,8 @@ func DeletePath(vaultPath string, session *Session) error {
 	// Ensure you are passing *git.CommitOptions, not just the Signature
 	commit, err := w.Commit(fmt.Sprintf("Nexus: Updated Vault"), &git.CommitOptions{
 		Author: &object.Signature{
-			Name:  "Nexus CLI",
-			Email: "nexus@cli.io",
+			Name:  "NexusCLI",
+			Email: "Auchrio@proton.me",
 			When:  time.Now(),
 		},
 	})
