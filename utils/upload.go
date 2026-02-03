@@ -43,11 +43,11 @@ func UploadFile(sourcePath string, vaultPath string, session *Session) error {
 		".config/index": indexBytes,
 	}
 
-	err = PushFiles(repoURL, session.RawKey, filesToPush, "Nexus: Update "+vaultPath)
+	err = PushFiles(repoURL, session.RawKey, filesToPush, "Nexus: Updated Vault")
 	if err != nil {
 		return err
 	}
 
 	// 6. Save updated index to local session to bypass cache
-	return session.Save()
+	return nil
 }
