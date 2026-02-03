@@ -43,16 +43,20 @@ func main() {
 				fmt.Print("Enter GitHub Username: ")
 				fmt.Scanln(&username)
 			}
-			fmt.Print("Enter Vault Password: ")
-			fmt.Scanln(&password)
 
-			err := utils.Connect(username, password)
+			// Use the new masked input function
+			pass, err := utils.GetPassword("Enter Vault Password: ")
+			if err != nil {
+				log.Fatal("Could not read password")
+			}
+			password = pass
+
+			err = utils.Connect(username, password)
 			if err != nil {
 				log.Fatal(err)
 			}
 		},
 	}
-	connectCmd.Flags().StringVarP(&username, "user", "u", "", "GitHub username")
 
 	// --- DISCONNECT COMMAND ---
 	var disconnectCmd = &cobra.Command{
