@@ -414,12 +414,49 @@ func main() {
 		},
 	}
 
+	// --- READ ---
+	var readSharedFlag string
+	var readCmd = &cobra.Command{
+		Use:     "read [vault-path]",
+		Aliases: []string{"cat"},
+		Short:   "Read and display file content (no download)",
+		Args:    cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			// Check if reading a shared file
+			if readSharedFlag != "" {
+				err := utils.ReadSharedFile(readSharedFlag)
+				if err != nil {
+					fmt.Printf("❌ Shared file read failed: %v\n", err)
+					return
+				}
+				return
+			}
+
+			session, err := getEffectiveSession()
+			if err != nil {
+				fmt.Printf("❌ Authentication failed: %v\n", err)
+				return
+			}
+
+			err = utils.ReadFile(args[0], session)
+			if err != nil {
+				fmt.Printf("❌ Read failed: %v\n", err)
+				return
+			}
+		},
+	}
+	readCmd.Flags().StringVar(&readSharedFlag, "shared", "", "Read a shared file using share string (username:storage_id:key)")
+
 	// --- SHELL ---
 	var shellCmd = &cobra.Command{
-		Use:     "shell",
+		Use:     "shell [username]",
 		Aliases: []string{"sh"},
 		Short:   "Launch interactive REPL",
+		Args:    cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			if len(args) > 0 {
+				username = args[0]
+			}
 			runInteractiveShell(rootCmd)
 		},
 	}
@@ -427,7 +464,7 @@ func main() {
 	rootCmd.AddCommand(
 		setupCmd, connectCmd, disconnectCmd,
 		uploadCmd, downloadCmd, deleteCmd,
-		listCmd, searchCmd, purgeCmd, shareCmd,
+		listCmd, searchCmd, purgeCmd, shareCmd, readCmd,
 		shellCmd,
 	)
 
