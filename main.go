@@ -401,16 +401,26 @@ func main() {
 				return
 			}
 
-			shareString, err := utils.ShareFile(args[0], session)
+			// Prompt for share password
+			sharePassword, _ := utils.GetPassword("Enter Share Password (recipients will use this to decrypt): ")
+			if sharePassword == "" {
+				fmt.Println("❌ Share password cannot be empty.")
+				return
+			}
+
+			shareString, err := utils.ShareFile(args[0], sharePassword, session)
 			if err != nil {
 				fmt.Printf("❌ Share failed: %v\n", err)
 				return
 			}
 
-			fmt.Println("Share this string to allow others to download the file:")
+			fmt.Println("\n✔ File shared successfully!")
+			fmt.Println("\nShare this string with recipient:")
 			fmt.Println(shareString)
 			fmt.Println("\nRecipient can download with:")
 			fmt.Printf("  zep download _ output.file --shared \"%s\"\n", shareString)
+			fmt.Println("\nOr read with:")
+			fmt.Printf("  zep read _ --shared \"%s\"\n", shareString)
 		},
 	}
 

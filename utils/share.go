@@ -1,12 +1,29 @@
 package utils
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 )
 
-// ShareFile generates a share string for a file: username:storage_id:decryption_key
-func ShareFile(vaultPath string, session *Session) (string, error) {
+// GenerateShareReference generates a random 6-character base62 reference
+func GenerateShareReference() (string, error) {
+	const charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	ref := make([]byte, 6)
+	for i := 0; i < 6; i++ {
+		idx, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			return "", err
+		}
+		ref[i] = charset[idx.Int64()]
+	}
+	return string(ref), nil
+}
+
+// ShareFile generates a share string with a new 6-char reference and share password
+// File is encrypted with share password and uploaded to /shared/{ref}
+func ShareFile(vaultPath string, sharePassword string, session *Session) (string, error) {
 	// 1. Find the file entry in the index
 	entry, err := session.Index.FindEntry(vaultPath)
 	if err != nil {
@@ -18,7 +35,13 @@ func ShareFile(vaultPath string, session *Session) (string, error) {
 		return "", fmt.Errorf("'%s' is a directory, you can only share individual files", vaultPath)
 	}
 
-	// 3. Decrypt the file key from the index
+	// 3. Fetch the original encrypted file from GitHub
+	encryptedData, err := FetchRaw(session.Username, entry.RealName)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch file from remote: %w", err)
+	}
+
+	// 4. Decrypt the file with the vault's file key
 	encryptedKey, err := hex.DecodeString(entry.FileKey)
 	if err != nil {
 		return "", fmt.Errorf("invalid file key in index: %w", err)
@@ -27,9 +50,41 @@ func ShareFile(vaultPath string, session *Session) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to decrypt file key: check your password")
 	}
+	decryptedData, err := DecryptWithKey(encryptedData, fileKey)
+	if err != nil {
+		return "", fmt.Errorf("decryption failed: %w", err)
+	}
 
-	// 4. Generate the share string: username:storage_id:key_hex
-	shareString := fmt.Sprintf("%s:%s:%s", session.Username, entry.RealName, EncodeKey(fileKey))
+	// 5. Generate a new 6-char reference
+	ref, err := GenerateShareReference()
+	if err != nil {
+		return "", fmt.Errorf("failed to generate share reference: %w", err)
+	}
+
+	// 6. Encrypt the file with the share password
+	shareEncrypted, err := Encrypt(decryptedData, sharePassword)
+	if err != nil {
+		return "", fmt.Errorf("failed to encrypt with share password: %w", err)
+	}
+
+	// 7. Upload to /shared/{ref}
+	sharedPath := fmt.Sprintf("shared/%s", ref)
+	filesToPush := map[string][]byte{
+		sharedPath: shareEncrypted,
+	}
+
+	err = PushFiles(
+		fmt.Sprintf("git@github.com:%s/.zephyrus.git", session.Username),
+		session.RawKey,
+		filesToPush,
+		fmt.Sprintf("Share file: %s", vaultPath),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to upload shared file: %w", err)
+	}
+
+	// 8. Generate the share string: username:reference:sharepassword
+	shareString := fmt.Sprintf("%s:%s:%s", session.Username, ref, sharePassword)
 
 	return shareString, nil
 }

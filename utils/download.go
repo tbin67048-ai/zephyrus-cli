@@ -47,38 +47,33 @@ func DownloadFile(vaultPath string, outputPath string, session *Session) error {
 	return os.WriteFile(outputPath, decryptedData, 0644)
 }
 
-// DownloadSharedFile downloads a file using a share string (username:storage_id:key)
+// DownloadSharedFile downloads a file using a share string (username:reference:sharepassword)
 func DownloadSharedFile(shareString string, outputPath string) error {
 	// 1. Parse the share string
 	parts := strings.Split(shareString, ":")
 	if len(parts) != 3 {
-		return fmt.Errorf("invalid share string format, expected 'username:storage_id:key'")
+		return fmt.Errorf("invalid share string format, expected 'username:reference:sharepassword'")
 	}
 
 	username := parts[0]
-	storageID := parts[1]
-	keyHex := parts[2]
+	reference := parts[1]
+	sharePassword := parts[2]
 
-	// 2. Decode the file key
-	fileKey, err := DecodeKey(keyHex)
-	if err != nil {
-		return fmt.Errorf("invalid file key in share string: %w", err)
-	}
+	fmt.Printf("Downloading shared file from %s (Reference: %s)...\n", username, reference)
 
-	fmt.Printf("Downloading shared file from %s (Storage ID: %s)...\n", username, storageID)
-
-	// 3. Fetch the encrypted file from GitHub
-	encryptedData, err := FetchRaw(username, storageID)
+	// 2. Fetch the encrypted file from the /shared/ folder
+	sharedPath := fmt.Sprintf("shared/%s", reference)
+	encryptedData, err := FetchRaw(username, sharedPath)
 	if err != nil {
 		return fmt.Errorf("failed to fetch shared file from remote: %w", err)
 	}
 
-	// 4. Decrypt with the provided file key
-	decryptedData, err := DecryptWithKey(encryptedData, fileKey)
+	// 3. Decrypt with the share password
+	decryptedData, err := Decrypt(encryptedData, sharePassword)
 	if err != nil {
-		return fmt.Errorf("decryption failed: invalid share key")
+		return fmt.Errorf("decryption failed: invalid share password")
 	}
 
-	// 5. Save to the local output path
+	// 4. Save to the local output path
 	return os.WriteFile(outputPath, decryptedData, 0644)
 }

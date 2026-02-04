@@ -59,43 +59,38 @@ func ReadFile(vaultPath string, session *Session) error {
 	return nil
 }
 
-// ReadSharedFile reads a shared file using a share string (username:storage_id:key)
+// ReadSharedFile reads a shared file using a share string (username:reference:sharepassword)
 func ReadSharedFile(shareString string) error {
 	// 1. Parse the share string
 	parts := strings.Split(shareString, ":")
 	if len(parts) != 3 {
-		return fmt.Errorf("invalid share string format, expected 'username:storage_id:key'")
+		return fmt.Errorf("invalid share string format, expected 'username:reference:sharepassword'")
 	}
 
 	username := parts[0]
-	storageID := parts[1]
-	keyHex := parts[2]
+	reference := parts[1]
+	sharePassword := parts[2]
 
-	// 2. Decode the file key
-	fileKey, err := DecodeKey(keyHex)
-	if err != nil {
-		return fmt.Errorf("invalid file key in share string: %w", err)
-	}
-
-	// 3. Fetch the encrypted file
-	encryptedData, err := FetchRaw(username, storageID)
+	// 2. Fetch the encrypted file from the /shared/ folder
+	sharedPath := fmt.Sprintf("shared/%s", reference)
+	encryptedData, err := FetchRaw(username, sharedPath)
 	if err != nil {
 		return fmt.Errorf("failed to fetch shared file: %w", err)
 	}
 
-	// 4. Decrypt the file data
-	decryptedData, err := DecryptWithKey(encryptedData, fileKey)
+	// 3. Decrypt with the share password
+	decryptedData, err := Decrypt(encryptedData, sharePassword)
 	if err != nil {
-		return fmt.Errorf("decryption failed: %w", err)
+		return fmt.Errorf("decryption failed: invalid share password")
 	}
 
-	// 5. Write decrypted content to stdout
+	// 4. Write decrypted content to stdout
 	_, err = os.Stdout.Write(decryptedData)
 	if err != nil {
 		return fmt.Errorf("failed to write to stdout: %w", err)
 	}
 
-	// 6. Append newline if file doesn't end with one
+	// 5. Append newline if file doesn't end with one
 	if len(decryptedData) == 0 || decryptedData[len(decryptedData)-1] != '\n' {
 		_, err = os.Stdout.Write([]byte("\n"))
 		if err != nil {
