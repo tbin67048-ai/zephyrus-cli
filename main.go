@@ -675,6 +675,51 @@ func main() {
 
 	settingsCmd.AddCommand(settingsInfoCmd, settingsSetCmd)
 
+	// --- INFO ---
+	var infoCmd = &cobra.Command{
+		Use:   "info [file-path]",
+		Short: "Display vault or file information",
+		Long: `Display information about your vault or a specific file.
+
+Without arguments: Shows vault statistics (file/folder counts, username) and settings.
+With file-path: Shows detailed file information (name, storage ID, encrypted size, file key).
+
+Examples:
+  zep info                    # Show vault statistics and settings
+  zep info documents/file.pdf # Show file information`,
+		Args: cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			// 1. Check if the config file exists BEFORE starting
+			_, err := os.Stat("zephyrus.conf")
+			isPersistent := err == nil
+
+			session, err := getEffectiveSession()
+			if err != nil {
+				fmt.Printf("❌ Authentication failed: %v\n", err)
+				return
+			}
+
+			if len(args) == 0 {
+				// Show general vault information
+				utils.PrintVaultInfo(session)
+			} else {
+				// Show specific file information
+				filePath := args[0]
+				fileInfo, err := utils.GetFileInfo(filePath, session)
+				if err != nil {
+					fmt.Printf("❌ Failed to get file info: %v\n", err)
+					return
+				}
+				utils.PrintFileInfo(fileInfo)
+			}
+
+			// Save session if persistent
+			if isPersistent {
+				session.Save()
+			}
+		},
+	}
+
 	// --- SHELL ---
 	var shellCmd = &cobra.Command{
 		Use:     "shell [username]",
@@ -692,7 +737,7 @@ func main() {
 	rootCmd.AddCommand(
 		setupCmd, connectCmd, disconnectCmd,
 		uploadCmd, downloadCmd, deleteCmd,
-		listCmd, searchCmd, purgeCmd, shareCmd, readCmd, sharedCmd, settingsCmd,
+		listCmd, searchCmd, purgeCmd, shareCmd, readCmd, sharedCmd, settingsCmd, infoCmd,
 		shellCmd,
 	)
 
