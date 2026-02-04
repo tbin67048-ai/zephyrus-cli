@@ -432,7 +432,7 @@ func main() {
 			fmt.Println("\nShare this string with recipient:")
 			fmt.Println(shareString)
 			fmt.Println("\nWeb Share Link:")
-			fmt.Printf("  https://zephyrus-development.github.io/shared/#%s\n", shareString)
+			fmt.Printf("  https://zep.ftp.sh/shared/#%s\n", shareString)
 			fmt.Println("\nRecipient can download with:")
 			fmt.Printf("  zep download _ output.file --shared \"%s\"\n", shareString)
 
@@ -660,7 +660,7 @@ If multiple files match a name, you'll be prompted to be more specific.`,
 			fmt.Printf("Shared At:     %s\n", entry.SharedAt.Format("2006-01-02 15:04:05"))
 			fmt.Printf("Password:      %s\n", entry.Password)
 			fmt.Printf("\nShare String:  %s\n", shareString)
-			fmt.Printf("\nWeb Share Link: https://zephyrus-development.github.io/shared/#%s\n\n", shareString)
+			fmt.Printf("\nWeb Share Link: https://zep.ftp.sh/shared/#%s\n\n", shareString)
 		},
 	}
 
