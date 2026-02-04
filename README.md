@@ -33,6 +33,26 @@ Before you can use Zephyrus CLI, you'll need:
 
 ## Installation
 
+### Install with Scoop (Windows)
+
+If you have [Scoop](https://scoop.sh) installed, the easiest way to install Zephyrus CLI is:
+
+```powershell
+scoop bucket add zephyrus https://github.com/zephyrus-development/scoop-zephyrus
+scoop install zephyrus/zep
+```
+
+To update:
+```powershell
+scoop update
+scoop update zep
+```
+
+To uninstall:
+```powershell
+scoop uninstall zep
+```
+
 ### Download Binary
 
 1. Visit the [Zephyrus CLI Releases Page](https://github.com/zephyrus-development/zephyrus-cli/releases)
