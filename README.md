@@ -209,7 +209,7 @@ Share this string with recipient:
 Auchrio:72cTWg:mysharepass123:cmVwb3J0LnBkZg==
 
 Web Share Link:
-  https://zephyrus-development.github.io/shared/#Auchrio:72cTWg:mysharepass123:cmVwb3J0LnBkZg==
+  https://zep.ftp.sh/shared/#Auchrio:72cTWg:mysharepass123:cmVwb3J0LnBkZg==
 
 Recipient can download with:
   zep download _ output.file --shared "Auchrio:72cTWg:mysharepass123:cmVwb3J0LnBkZg=="
@@ -224,7 +224,7 @@ Recipients can access shared files in 3 ways:
 
 1. **Web Browser** (Easiest): Click the share link and download securely in browser
    ```
-   https://zephyrus-development.github.io/shared/#Auchrio:72cTWg:mysharepass123:cmVwb3J0LnBkZg==
+   https://zep.ftp.sh/shared/#Auchrio:72cTWg:mysharepass123:cmVwb3J0LnBkZg==
    ```
 
 2. **CLI Download**: Use the Zephyrus CLI to download
