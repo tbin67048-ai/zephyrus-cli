@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 )
@@ -14,19 +15,40 @@ func UploadFile(sourcePath string, vaultPath string, session *Session) error {
 		return err
 	}
 
-	// 2. Determine Storage Name (Check local index cache)
+	// 2. Determine Storage Name and File Key
 	var realName string
-	if entry, exists := session.Index[vaultPath]; exists {
+	var fileKey []byte
+
+	entry, err := session.Index.FindEntry(vaultPath)
+	if err == nil && entry.Type == "file" {
+		// Existing file: reuse storage name, decrypt existing key
 		realName = entry.RealName
 		fmt.Printf("Updating existing file: %s (%s)\n", vaultPath, realName)
+
+		// Decrypt the existing file key
+		encryptedKey, _ := hex.DecodeString(entry.FileKey)
+		fileKey, err = Decrypt(encryptedKey, session.Password)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt file key: %w", err)
+		}
 	} else {
+		// New file: generate new storage name and file key
 		realName = GenerateRandomName()
-		session.Index.AddFile(vaultPath, realName)
+		fileKey = GenerateFileKey()
+
+		// Encrypt the file key with the vault password
+		encryptedKey, err := Encrypt(fileKey, session.Password)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt file key: %w", err)
+		}
+		encryptedKeyHex := hex.EncodeToString(encryptedKey)
+
+		session.Index.AddFile(vaultPath, realName, encryptedKeyHex)
 		fmt.Printf("Uploading new file: %s as %s\n", vaultPath, realName)
 	}
 
-	// 3. Encrypt file data
-	encryptedData, err := Encrypt(data, session.Password)
+	// 3. Encrypt file data with the per-file key
+	encryptedData, err := EncryptWithKey(data, fileKey)
 	if err != nil {
 		return err
 	}

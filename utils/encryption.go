@@ -87,3 +87,66 @@ func GenerateRandomName() string {
 	}
 	return hex.EncodeToString(bytes)
 }
+
+// GenerateFileKey creates a random 32-byte key for per-file encryption
+func GenerateFileKey() []byte {
+	key := make([]byte, KeySize)
+	if _, err := rand.Read(key); err != nil {
+		panic(err)
+	}
+	return key
+}
+
+// EncryptWithKey encrypts plaintext using a raw AES-256 key (no PBKDF2)
+func EncryptWithKey(plaintext []byte, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce := make([]byte, NonceSize)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+
+	ciphertext := gcm.Seal(nil, nonce, plaintext, nil)
+
+	// Bundle as: [Nonce][Ciphertext]
+	result := append(nonce, ciphertext...)
+	return result, nil
+}
+
+// DecryptWithKey decrypts data using a raw AES-256 key (no PBKDF2)
+func DecryptWithKey(data []byte, key []byte) ([]byte, error) {
+	if len(data) < NonceSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	nonce := data[:NonceSize]
+	ciphertext := data[NonceSize:]
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	return gcm.Open(nil, nonce, ciphertext, nil)
+}
+
+// EncodeKey converts a raw key to hex string for sharing
+func EncodeKey(key []byte) string {
+	return hex.EncodeToString(key)
+}
+
+// DecodeKey converts a hex string back to raw key
+func DecodeKey(hexKey string) ([]byte, error) {
+	return hex.DecodeString(hexKey)
+}

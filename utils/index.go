@@ -10,6 +10,7 @@ import (
 type Entry struct {
 	Type     string           `json:"type"`
 	RealName string           `json:"realName,omitempty"`
+	FileKey  string           `json:"fileKey,omitempty"` // Hex-encoded encrypted file key
 	Contents map[string]Entry `json:"contents,omitempty"`
 }
 
@@ -67,8 +68,8 @@ func (vi VaultIndex) FindEntry(path string) (*Entry, error) {
 	return nil, fmt.Errorf("invalid path")
 }
 
-// AddFile inserts a new file into the index
-func (vi VaultIndex) AddFile(path string, realName string) {
+// AddFile inserts a new file into the index with an encrypted file key
+func (vi VaultIndex) AddFile(path string, realName string, encryptedKeyHex string) {
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	currentMap := vi
 
@@ -89,7 +90,32 @@ func (vi VaultIndex) AddFile(path string, realName string) {
 	currentMap[fileName] = Entry{
 		Type:     "file",
 		RealName: realName,
+		FileKey:  encryptedKeyHex,
 	}
+}
+
+// UpdateFileKey updates the encrypted file key for an existing entry
+func (vi VaultIndex) UpdateFileKey(path string, encryptedKeyHex string) error {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	currentMap := vi
+
+	for i := 0; i < len(parts)-1; i++ {
+		part := parts[i]
+		entry, exists := currentMap[part]
+		if !exists {
+			return fmt.Errorf("path component '%s' not found", part)
+		}
+		currentMap = entry.Contents
+	}
+
+	fileName := parts[len(parts)-1]
+	entry, exists := currentMap[fileName]
+	if !exists {
+		return fmt.Errorf("file '%s' not found", fileName)
+	}
+	entry.FileKey = encryptedKeyHex
+	currentMap[fileName] = entry
+	return nil
 }
 
 // PrintDebug prints the index structure to the console

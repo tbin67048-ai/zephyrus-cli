@@ -140,12 +140,23 @@ func main() {
 	}
 
 	// --- DOWNLOAD ---
+	var sharedFlag string
 	var downloadCmd = &cobra.Command{
 		Use:     "download [vault-path] [local-path]",
 		Aliases: []string{"down", "d", "get"},
 		Short:   "Download a file from the vault",
 		Args:    cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
+			// Check if downloading a shared file
+			if sharedFlag != "" {
+				err := utils.DownloadSharedFile(sharedFlag, args[1])
+				if err != nil {
+					log.Fatal(err)
+				}
+				fmt.Println("✔ Shared file download successful.")
+				return
+			}
+
 			session, err := getEffectiveSession()
 			if err != nil {
 				log.Fatal(err)
@@ -158,6 +169,7 @@ func main() {
 			fmt.Println("✔ Download successful.")
 		},
 	}
+	downloadCmd.Flags().StringVar(&sharedFlag, "shared", "", "Download a shared file using share string (username:storage_id:key)")
 
 	// --- DELETE ---
 	var deleteCmd = &cobra.Command{
@@ -265,10 +277,34 @@ func main() {
 		},
 	}
 
+	// --- SHARE ---
+	var shareCmd = &cobra.Command{
+		Use:     "share [vault-path]",
+		Aliases: []string{"sh"},
+		Short:   "Generate a share string for a file",
+		Args:    cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			session, err := getEffectiveSession()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			shareString, err := utils.ShareFile(args[0], session)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			fmt.Println("Share this string to allow others to download the file:")
+			fmt.Println(shareString)
+			fmt.Println("\nRecipient can download with:")
+			fmt.Printf("  nexus-cli download _ output.file --shared \"%s\"\n", shareString)
+		},
+	}
+
 	rootCmd.AddCommand(
 		setupCmd, connectCmd, disconnectCmd,
 		uploadCmd, downloadCmd, deleteCmd,
-		listCmd, searchCmd, purgeCmd,
+		listCmd, searchCmd, purgeCmd, shareCmd,
 	)
 
 	// Check if we should enter REPL or just execute once
