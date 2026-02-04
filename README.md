@@ -1,3 +1,7 @@
+⚠️ **For detailed technical architecture, cryptographic design, and security analysis, please refer to the [Whitepaper](https://github.com/NexusCLI/NexusCLI/wiki/WHITEPAPER.md).**
+
+---
+
 # Nexus CLI
 
 A secure, encrypted file vault backed by GitHub. Store your sensitive files with confidence using end-to-end encryption and git-based version control.
