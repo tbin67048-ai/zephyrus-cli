@@ -65,7 +65,7 @@ func UploadFile(sourcePath string, vaultPath string, session *Session) error {
 		".config/index": indexBytes,
 	}
 
-	err = PushFiles(repoURL, session.RawKey, filesToPush, "Nexus: Updated Vault")
+	err = PushFiles(repoURL, session.RawKey, filesToPush, "Zephyrus: Updated Vault")
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Entry represents either a file or a folder in the Nexus vault
+// Entry represents either a file or a folder in the Zephyrus vault
 type Entry struct {
 	Type     string           `json:"type"`
 	RealName string           `json:"realName,omitempty"`

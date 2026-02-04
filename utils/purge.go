@@ -31,7 +31,7 @@ func PurgeVault(session *Session) error {
 	r, _ := git.Init(storer, fs)
 	w, _ := r.Worktree()
 
-	commit, err := w.Commit("Nexus: Updated Vault", &git.CommitOptions{
+	commit, err := w.Commit("Zephyrus: Updated Vault", &git.CommitOptions{
 		Author: &object.Signature{
 			Name:  "Zephyrus",
 			Email: "Auchrio@proton.me",

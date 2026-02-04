@@ -70,8 +70,8 @@ func SetupVault(githubUser string, keyFilePath string, password string) error {
 	f.Close()
 	w.Add(".config/key")
 
-	commit, _ := w.Commit("Nexus: Setup Complete", &git.CommitOptions{
-		Author: &object.Signature{Name: "Nexus", Email: "setup@cli.io", When: time.Now()},
+	commit, _ := w.Commit("Zephyrus: Setup Complete", &git.CommitOptions{
+		Author: &object.Signature{Name: "Zephyrus", Email: "Auchrio@proton.me", When: time.Now()},
 	})
 
 	publicKeys, _ := ssh.NewPublicKeys("git", rawKey, "")
