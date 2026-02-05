@@ -8,6 +8,7 @@ class FileVault {
         this.username = username;
         this.password = password;
         this.index = null;
+        this.sharedIndex = null;
         this.currentPath = '';
         this.repoURL = `https://raw.githubusercontent.com/${username}/.zephyrus/master`;
     }
@@ -29,6 +30,10 @@ class FileVault {
             const jsonString = new TextDecoder().decode(decryptedBuffer);
             
             this.index = JSON.parse(jsonString);
+            
+            // Also try to load the shared index
+            await this.loadSharedIndex();
+            
             return this.index;
         } catch (error) {
             if (error instanceof SyntaxError) {
@@ -36,6 +41,62 @@ class FileVault {
             }
             throw error;
         }
+    }
+
+    /**
+     * Fetch and decrypt the shared index
+     */
+    async loadSharedIndex() {
+        try {
+            const sharedIndexUrl = `${this.repoURL}/shared/.config/index`;
+            const response = await fetch(sharedIndexUrl);
+
+            if (!response.ok) {
+                // Shared index might not exist if no files have been shared
+                console.log('No shared index found');
+                this.sharedIndex = null;
+                return;
+            }
+
+            const encryptedBuffer = await response.arrayBuffer();
+            const decryptedBuffer = await CRYPTO.decryptWithPassword(encryptedBuffer, this.password);
+            const jsonString = new TextDecoder().decode(decryptedBuffer);
+            
+            this.sharedIndex = JSON.parse(jsonString);
+            console.log('Shared index loaded:', this.sharedIndex);
+        } catch (error) {
+            console.warn('Failed to load shared index:', error);
+            this.sharedIndex = null;
+        }
+    }
+
+    /**
+     * Get all shared files
+     */
+    getSharedFiles() {
+        if (!this.sharedIndex || !this.sharedIndex.files) {
+            return [];
+        }
+
+        const entries = Object.values(this.sharedIndex.files);
+        return entries.sort((a, b) => {
+            const dateA = new Date(a.shared_at || a.SharedAt || 0);
+            const dateB = new Date(b.shared_at || b.SharedAt || 0);
+            return dateB - dateA; // Most recent first
+        });
+    }
+
+    /**
+     * Generate share link from shared entry
+     */
+    generateShareLink(sharedEntry) {
+        const filename = sharedEntry.name || sharedEntry.Name || '';
+        const encodedFilename = btoa(filename);
+        const reference = sharedEntry.reference || sharedEntry.Reference;
+        const password = sharedEntry.password || sharedEntry.Password;
+        
+        // Format: username:reference:password:base64filename
+        return `${this.username}:${reference}:${password}:${encodedFilename}`;
     }
 
     /**
@@ -361,8 +422,66 @@ class FileBrowserUI {
         const fileList = document.getElementById('fileList');
         fileList.innerHTML = '';
 
-        if (items.length === 0) {
-            fileList.innerHTML = `
+        // If in root, show "Shared Files" section first
+        if (!this.vault.currentPath && this.vault.sharedIndex) {
+            const sharedFiles = this.vault.getSharedFiles();
+            if (sharedFiles.length > 0) {
+                const sharedSection = document.createElement('div');
+                sharedSection.className = 'shared-files-section';
+                
+                const header = document.createElement('div');
+                header.className = 'shared-files-header';
+                header.innerHTML = `<span class="shared-files-toggle">▼</span> 📤 Your Shared Files (${sharedFiles.length})`;
+                
+                const listContainer = document.createElement('div');
+                listContainer.className = 'shared-files-list';
+                listContainer.id = 'sharedFilesList';
+                
+                // Add shared files to list
+                for (const shared of sharedFiles) {
+                    const shareLink = this.vault.generateShareLink(shared);
+                    // Build correct URL: from /pages/files/ to /pages/shared/#hash
+                    const basePath = window.location.pathname.replace('/files/', '/shared/');
+                    const shareUrl = `${basePath}#${shareLink}`;
+                    
+                    const element = document.createElement('div');
+                    element.className = 'file-item';
+                    element.innerHTML = `
+                        <div class="file-icon">📤</div>
+                        <div class="file-info">
+                            <div class="file-name">${this.escapeHtml(shared.name || shared.Name)}</div>
+                            <div class="file-path">${this.escapeHtml(shared.original_path || shared.OriginalPath)}</div>
+                        </div>
+                        <div class="file-actions">
+                            <button class="btn-secondary btn-small" onclick="fileBrowser.copyShareLink('${this.escapeAttr(shareUrl)}')">
+                                🔗 Copy Link
+                            </button>
+                        </div>
+                    `;
+                    listContainer.appendChild(element);
+                }
+                
+                // Add separator after shared files
+                const separator = document.createElement('div');
+                separator.className = 'shared-files-separator';
+                listContainer.appendChild(separator);
+                
+                // Toggle handler
+                header.addEventListener('click', () => {
+                    const toggle = header.querySelector('.shared-files-toggle');
+                    listContainer.classList.toggle('visible');
+                    toggle.classList.toggle('expanded');
+                });
+                
+                sharedSection.appendChild(header);
+                sharedSection.appendChild(listContainer);
+                fileList.appendChild(sharedSection);
+            }
+        }
+
+        // Show files and folders
+        if (items.length === 0 && (!this.vault.currentPath || !this.vault.sharedIndex)) {
+            fileList.innerHTML += `
                 <div class="empty-state">
                     <div class="empty-icon">📁</div>
                     <div class="empty-text">This directory is empty</div>
@@ -436,6 +555,18 @@ class FileBrowserUI {
                 breadcrumbDiv.appendChild(sep);
             }
         }
+    }
+
+    /**
+     * Copy share link to clipboard
+     */
+    copyShareLink(shareUrl) {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            this.showSuccess('Share link copied to clipboard!');
+        }).catch(err => {
+            console.error('Failed to copy link:', err);
+            this.showError('Failed to copy link');
+        });
     }
 
     /**

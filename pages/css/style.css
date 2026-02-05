@@ -308,6 +308,57 @@ button {
     margin-bottom: 10px;
 }
 
+.shared-files-section {
+    margin-bottom: 0px;
+}
+
+.shared-files-header {
+    color: #7431ff;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 12px;
+    background: rgba(116, 49, 255, 0.08);
+    border: 1px solid rgba(116, 49, 255, 0.15);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    user-select: none;
+    transition: all 0.3s ease;
+}
+
+.shared-files-header:hover {
+    background: rgba(116, 49, 255, 0.15);
+    border-color: rgba(116, 49, 255, 0.3);
+}
+
+.shared-files-toggle {
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+.shared-files-toggle.expanded {
+    transform: rotate(180deg);
+}
+
+.shared-files-list {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.shared-files-list.visible {
+    display: flex;
+}
+
+.shared-files-separator {
+    height: 1px;
+    background: rgba(116, 49, 255, 0.2);
+    margin: 20px 0;
+}
+
 /* === Spinner === */
 .spinner {
     display: inline-block;
