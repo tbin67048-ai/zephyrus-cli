@@ -244,6 +244,59 @@ func main() {
 		},
 	}
 
+	// --- TRANSFER VAULT ---
+	var transferVaultCmd = &cobra.Command{
+		Use:     "transfer-vault [source-username] [dest-username]",
+		Aliases: []string{"transfer", "xfer", "copy-vault"},
+		Short:   "Transfer all files from one vault to another",
+		Args:    cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			sourceUsername := args[0]
+			destUsername := args[1]
+
+			if sourceUsername == destUsername {
+				fmt.Println("❌ Source and destination vaults must be different.")
+				return
+			}
+
+			// Get source vault password
+			fmt.Printf("Source vault authentication (%s):\n", sourceUsername)
+			sourcePass, err := utils.GetPassword("Source Vault Password: ")
+			if err != nil {
+				fmt.Printf("❌ Error reading password: %v\n", err)
+				return
+			}
+
+			// Get destination vault password
+			fmt.Printf("\nDestination vault authentication (%s):\n", destUsername)
+			destPass, err := utils.GetPassword("Destination Vault Password: ")
+			if err != nil {
+				fmt.Printf("❌ Error reading password: %v\n", err)
+				return
+			}
+
+			// Confirm transfer
+			fmt.Printf("\n⚠️  You are about to transfer all files from %s to %s.\n", sourceUsername, destUsername)
+			fmt.Print("This will copy all vault contents. Continue? (y/n): ")
+			var confirm string
+			fmt.Scanln(&confirm)
+			if confirm != "y" && confirm != "yes" {
+				fmt.Println("Transfer cancelled.")
+				return
+			}
+
+			// Perform transfer
+			err = utils.TransferVault(sourceUsername, sourcePass, destUsername, destPass)
+			if err != nil {
+				fmt.Printf("❌ Transfer failed: %v\n", err)
+				return
+			}
+
+			fmt.Println("✔ Vault transfer complete!")
+			fmt.Printf("All files have been successfully transferred from %s to %s\n", sourceUsername, destUsername)
+		},
+	}
+
 	// --- CONNECT ---
 	var connectCmd = &cobra.Command{
 		Use:     "connect [username]",
@@ -952,7 +1005,7 @@ Examples:
 	}
 
 	rootCmd.AddCommand(
-		setupCmd, connectCmd, resetPasswordCmd, disconnectCmd,
+		setupCmd, connectCmd, resetPasswordCmd, transferVaultCmd, disconnectCmd,
 		uploadCmd, downloadCmd, deleteCmd,
 		listCmd, searchCmd, purgeCmd, shareCmd, readCmd, sharedCmd, settingsCmd, infoCmd,
 		locallsCmd, localdirCmd,
