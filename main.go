@@ -254,7 +254,7 @@ func main() {
 	var downloadCmd = &cobra.Command{
 		Use:     "download [vault-path] [local-path]",
 		Aliases: []string{"down", "d", "get"},
-		Short:   "Download a file from the vault",
+		Short:   "Download a file or directory from the vault",
 		Args:    cobra.RangeArgs(1, 2),
 		Run: func(cmd *cobra.Command, args []string) {
 			vaultPath := args[0]
@@ -283,9 +283,24 @@ func main() {
 				return
 			}
 
-			err = utils.DownloadFile(vaultPath, localPath, session)
+			// Check if the vault path is a directory or file
+			entry, err := session.Index.FindEntry(vaultPath)
 			if err != nil {
 				fmt.Printf("❌ Download failed: %v\n", err)
+				return
+			}
+
+			var downloadErr error
+			if entry.Type == "folder" {
+				// Directory download
+				downloadErr = utils.DownloadDirectory(vaultPath, localPath, session)
+			} else {
+				// Single file download
+				downloadErr = utils.DownloadFile(vaultPath, localPath, session)
+			}
+
+			if downloadErr != nil {
+				fmt.Printf("❌ Download failed: %v\n", downloadErr)
 				return
 			}
 			fmt.Println("✔ Download successful.")

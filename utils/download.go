@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -62,6 +63,117 @@ func DownloadFile(vaultPath string, outputPath string, session *Session) error {
 		return err
 	}
 	PrintCompletionLine("File saved successfully")
+	return nil
+}
+
+// DownloadDirectory downloads an entire directory recursively from the vault
+func DownloadDirectory(vaultPath string, outputPath string, session *Session) error {
+	// 1. Verify the path is a directory
+	PrintProgressStep(1, 3, "Locating directory in vault...")
+	entry, err := session.Index.FindEntry(vaultPath)
+	if err != nil {
+		return fmt.Errorf("could not find directory in vault: %w", err)
+	}
+
+	// 2. Safety check: Ensure we're downloading a folder
+	if entry.Type != "folder" {
+		return fmt.Errorf("'%s' is a file, not a directory. Use download command for files", vaultPath)
+	}
+	PrintCompletionLine("Directory located")
+
+	fmt.Printf("Downloading directory from vault: %s\n", vaultPath)
+
+	// 3. Create output directory if it doesn't exist
+	err = os.MkdirAll(outputPath, 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	fileCount := 0
+
+	// 4. Recursively download all files in the directory
+	var downloadFiles func(currentEntry Entry, currentVaultPath string, currentLocalPath string) error
+	downloadFiles = func(currentEntry Entry, currentVaultPath string, currentLocalPath string) error {
+		// Process all entries in the current folder
+		for name, subEntry := range currentEntry.Contents {
+			var nextVaultPath string
+			if currentVaultPath == "" {
+				nextVaultPath = name
+			} else {
+				nextVaultPath = currentVaultPath + "/" + name
+			}
+
+			nextLocalPath := filepath.Join(currentLocalPath, name)
+
+			if subEntry.Type == "file" {
+				fileCount++
+				fmt.Printf("Downloading file (%d): %s\n", fileCount, name)
+
+				// 5. Fetch the encrypted file from GitHub
+				encryptedData, err := FetchRaw(session.Username, subEntry.RealName)
+				if err != nil {
+					return fmt.Errorf("failed to fetch file %s: %w", nextVaultPath, err)
+				}
+
+				// 6. Decrypt the file key from the index
+				encryptedKey, err := hex.DecodeString(subEntry.FileKey)
+				if err != nil {
+					return fmt.Errorf("invalid file key in index for %s: %w", nextVaultPath, err)
+				}
+				fileKey, err := Decrypt(encryptedKey, session.Password)
+				if err != nil {
+					return fmt.Errorf("failed to decrypt file key for %s: %w", nextVaultPath, err)
+				}
+
+				// 7. Decrypt the file data with the file key
+				decryptedData, err := DecryptWithKey(encryptedData, fileKey)
+				if err != nil {
+					return fmt.Errorf("decryption failed for %s: %w", nextVaultPath, err)
+				}
+
+				// 8. Save to local path
+				err = os.WriteFile(nextLocalPath, decryptedData, 0644)
+				if err != nil {
+					return fmt.Errorf("failed to save file %s: %w", nextLocalPath, err)
+				}
+
+				fmt.Printf("  → Saved: %s\n", nextLocalPath)
+
+			} else if subEntry.Type == "folder" {
+				// Create subdirectory
+				err := os.MkdirAll(nextLocalPath, 0755)
+				if err != nil {
+					return fmt.Errorf("failed to create directory %s: %w", nextLocalPath, err)
+				}
+
+				// Recursively download contents
+				err = downloadFiles(subEntry, nextVaultPath, nextLocalPath)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	}
+
+	// Start recursive download from the directory entry
+	err = downloadFiles(*entry, vaultPath, outputPath)
+	if err != nil {
+		return err
+	}
+
+	if fileCount == 0 {
+		return fmt.Errorf("no files found in directory: %s", vaultPath)
+	}
+
+	PrintProgressStep(2, 3, "Finalizing download...")
+	PrintCompletionLine("Decryption complete")
+
+	PrintProgressStep(3, 3, "Writing files to disk...")
+	PrintCompletionLine("Files written successfully")
+
+	fmt.Printf("✔ Successfully downloaded %d files from directory\n", fileCount)
 	return nil
 }
 
