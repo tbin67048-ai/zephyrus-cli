@@ -1,0 +1,45 @@
+name: Sync Utils to GUI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'zephyrus-cli/utils/**'
+  workflow_dispatch:
+
+jobs:
+  sync-utils:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          # Using your specific secret for authentication
+          token: ${{ secrets.SCOOP_UPDATE_TOKEN }}
+          fetch-depth: 0
+
+      - name: Sync Files
+        run: |
+          # Create directory if missing
+          mkdir -p zephyrus-gui/utils
+          
+          # Sync files and delete those removed from source
+          # Using rsync ensures zephyrus-gui/utils is an exact mirror
+          rsync -av --delete zephyrus-cli/utils/ zephyrus-gui/utils/
+
+      - name: Commit and Push Changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          git add zephyrus-gui/utils/
+          
+          if git diff --quiet --cached; then
+            echo "No changes to sync."
+          else
+            # [skip ci] prevents this commit from triggering the workflow again
+            git commit -m "chore: auto-sync utils from CLI [skip ci]"
+            git push origin HEAD:main
+          fi
